@@ -26,8 +26,8 @@ import numpy as np
 # We prepare a DataFrame with the public test set + riders data
 # from the Zindi challenge.
 test = pd.read_csv('data/test_data.csv')
-riders = pd.read_csv('data/riders.csv')
-test = test.merge(riders, how='left', on='Rider Id')
+#riders = pd.read_csv('data/riders.csv')
+#test = test.merge(riders, how='left', on='Rider Id')
 
 # Convert our DataFrame to a JSON string.
 # This step is necessary in order to transmit our data via HTTP/S
