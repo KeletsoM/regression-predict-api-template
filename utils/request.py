@@ -47,7 +47,7 @@ print(f"Querying API with the following data: \n {test.iloc[1].to_list()}")
 print("")
 # Here `api_response` represents the response we get from our API
 api_response = requests.post(url, json=feature_vector_json)
-print(api_response)
+
 # Display the prediction result
 print("Received POST response:")
 print("*"*50)
