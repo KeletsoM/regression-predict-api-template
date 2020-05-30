@@ -64,45 +64,92 @@ def _preprocess_data(data):
                                         #'Destination Lat','Destination Long']]
     # ------------------------------------------------------------------------
     Train = pd.read_csv('utils/data/train_data.csv')
-    #Riders = pd.read_csv('utils/data/riders.csv')
+    Riders = pd.read_csv('utils/data/riders.csv')
 
-    train2= Train.drop(['Vehicle Type', 'Personal or Business','Placement - Day of Month',
-                    'Placement - Weekday (Mo = 1)','Confirmation - Day of Month','Confirmation - Weekday (Mo = 1)',
-                   'Temperature', 'Precipitation in millimeters','Arrival at Pickup - Day of Month',
-                    'Arrival at Pickup - Weekday (Mo = 1)','Pickup - Day of Month','Pickup - Weekday (Mo = 1)',
-                    'Arrival at Destination - Day of Month','Arrival at Destination - Weekday (Mo = 1)','User Id'], axis=1)
+    Train.drop(['Order No','User Id','Vehicle Type','Precipitation in millimeters'], axis=1, inplace=True)
 
-    train3 = train2.drop(['Placement - Time','Confirmation - Time',
-                      'Arrival at Pickup - Time','Pickup - Time',
-                      'Arrival at Destination - Time','Pickup Lat','Pickup Long','Destination Lat','Destination Long',
-                      'Order No'], axis=1)
+    Train.drop(['Confirmation - Day of Month','Confirmation - Weekday (Mo = 1)','Arrival at Pickup - Day of Month',
+            'Arrival at Pickup - Weekday (Mo = 1)','Arrival at Destination - Weekday (Mo = 1)','Pickup - Day of Month',
+            'Pickup - Weekday (Mo = 1)','Arrival at Destination - Day of Month','Temperature'], axis=1, inplace=True)
     
-    feature_vector_df1 = feature_vector_df.drop(['Vehicle Type', 'Personal or Business','Placement - Day of Month',
-                    'Placement - Weekday (Mo = 1)','Confirmation - Day of Month','Confirmation - Weekday (Mo = 1)',
-                   'Temperature', 'Precipitation in millimeters','Arrival at Pickup - Day of Month',
-                    'Arrival at Pickup - Weekday (Mo = 1)','Pickup - Day of Month','Pickup - Weekday (Mo = 1)','User Id'], axis=1)
+    pickup_co= Train[['Pickup Lat', 'Pickup Long']].apply(tuple, axis=1).tolist()
+    destination_co = Train[['Destination Lat', 'Destination Long']].apply(tuple, axis=1).tolist()
+    
+    import reverse_geocoder as rg
 
-    feature_vector_df2 = feature_vector_df1.drop(['Placement - Time','Confirmation - Time',
-                      'Arrival at Pickup - Time','Pickup - Time','Pickup Lat','Pickup Long','Destination Lat','Destination Long',
-                      'Order No'], axis=1)
+    pickup_re = rg.search(pickup_co, mode=2)
+    Train['Pickup_city'] = [x['name'] for x in pickup_re]
 
-    feature_vector_df2.drop(['No_Of_Orders','Age','Average_Rating','No_of_Ratings'], axis=1 , inplace=True)
+    dest_re = rg.search(destination_co, mode=2)
+    Train['Destination_city'] = [x['name'] for x in dest_re]
+    
+    Train['Pickup_to_Destination']= Train[['Pickup_city', 'Destination_city']].agg('-'.join, axis=1)
+    
+    Train.drop(['Pickup Lat','Pickup Long','Destination Lat','Destination Long',
+            'Pickup_city','Destination_city'], axis=1, inplace=True)
+    
+    def time_to_seconds(column_name):
+        Train[column_name] = pd.to_datetime(Train[column_name])
+        return (Train[column_name]- pd.to_datetime(pd.to_datetime('today').date())).astype('timedelta64[s]')
+    Train['Confirmation - Time']=time_to_seconds('Confirmation - Time')
+    Train['Con_Time_of_day'] = ['Morning' if x< 43200 else 'Afternoon' for x in Train['Confirmation - Time']]
+    Train['Platform Type'] = ['Busy' if x == 3  else 'Not_busy' for x in Train['Platform Type']]
+    Train.drop(['Placement - Time','Confirmation - Time','Arrival at Pickup - Time','Pickup - Time',
+            'Arrival at Destination - Time'], axis=1, inplace=True)
+    
+    
+    
+    feature_vector_df.drop(['Order No','User Id','Vehicle Type','Precipitation in millimeters'], axis=1, inplace=True)
+    
+    feature_vector_df.drop(['Confirmation - Day of Month','Confirmation - Weekday (Mo = 1)','Arrival at Pickup - Day of Month',
+            'Arrival at Pickup - Weekday (Mo = 1)','Pickup - Day of Month',
+            'Pickup - Weekday (Mo = 1)'], axis=1, inplace=True)
+    
+    pickup_coo= feature_vector_df[['Pickup Lat', 'Pickup Long']].apply(tuple, axis=1).tolist()
+    destination_coo = feature_vector_df[['Destination Lat', 'Destination Long']].apply(tuple, axis=1).tolist()
+    
+    pickup_ree = rg.search(pickup_coo, mode=2)
+    feature_vector_df['Pickup_city'] = [x['name'] for x in pickup_ree]
 
-    train3['train'] = 1
-    feature_vector_df2['train'] = 0
+    dest_ree = rg.search(destination_coo, mode=2)
+    feature_vector_df['Destination_city'] = [x['name'] for x in dest_ree]
+    feature_vector_df['Pickup_to_Destination']= feature_vector_df[['Pickup_city', 'Destination_city']].agg('-'.join, axis=1)
+    
+    feature_vector_df.drop(['Pickup Lat','Pickup Long','Destination Lat','Destination Long',
+           'Pickup_city','Destination_city'], axis=1, inplace=True)
 
-    combined = pd.concat([train3,feature_vector_df2])
-    combined = combined[['Platform Type', 'Distance (KM)', 'Rider Id','train','Time from Pickup to Arrival']]
+    feature_vector_df.drop(['No_Of_Orders','Age','Average_Rating','No_of_Ratings'], axis=1 , inplace=True)
+    
+    def time_to_seconds1(column_name):
+        feature_vector_df[column_name] = pd.to_datetime(feature_vector_df[column_name])
+        return (feature_vector_df[column_name]- pd.to_datetime(pd.to_datetime('today').date())).astype('timedelta64[s]')
+    feature_vector_df['Confirmation - Time']=time_to_seconds1('Confirmation - Time')
+    
+    feature_vector_df['Con_Time_of_day'] = ['Morning' if x< 43200 else 'Afternoon' for x in feature_vector_df['Confirmation - Time']]
+    feature_vector_df['Platform Type'] = ['Busy' if x == 3  else 'Not_busy' for x in feature_vector_df['Platform Type']]
+    feature_vector_df.drop(['Placement - Time','Confirmation - Time','Arrival at Pickup - Time','Pickup - Time'], axis=1, inplace=True)
+    
+    Train['train'] = 1
+    feature_vector_df['train'] = 0
+    
+    combined = pd.concat([Train,feature_vector_df])
+    combined = combined.merge(Riders, how='left', on = 'Rider Id')
+    
+    combined = combined[['Platform Type', 'Distance (KM)', 'Rider Id','Personal or Business','Pickup_to_Destination',
+                     'Con_Time_of_day','Placement - Day of Month',
+                     'Placement - Weekday (Mo = 1)','Average_Rating','train','Time from Pickup to Arrival']]
+    
     combined.columns = [col.replace(' ','_') for col in combined.columns]
+
     combined.columns = [col.replace('(','') for col in combined.columns]
     combined.columns = [col.replace(')','') for col in combined.columns]
-
-    df_dummies = pd.get_dummies(combined,columns=['Platform_Type','Rider_Id'], drop_first=True)
-
+    
+    df_dummies = pd.get_dummies(combined,columns=['Platform_Type','Rider_Id','Pickup_to_Destination',
+                                              'Con_Time_of_day','Placement_-_Day_of_Month','Placement_-_Weekday_Mo_=_1','Personal_or_Business'], drop_first=True)
     Test2 = df_dummies[df_dummies['train']== 0]
-    Test2.drop(['Time_from_Pickup_to_Arrival'],axis=1,inplace=True)
     Test2.drop(['train'],axis=1,inplace=True)
-
+    
+    Test2.drop(['Time_from_Pickup_to_Arrival'], axis=1,inplace=True)
     
     return Test2
 
@@ -145,5 +192,4 @@ def make_prediction(data, model):
     # Perform prediction with model and preprocessed data.
     prediction = model.predict(prep_data)
     # Format as list for output standerdisation.
-    print(prediction[0].tolist())
     return prediction[0].tolist()
