@@ -151,6 +151,13 @@ def _preprocess_data(data):
     
     Test2.drop(['Time_from_Pickup_to_Arrival'], axis=1,inplace=True)
     
+    model_load_path = "assets/trained-models/scalar.pkl"
+    with open(model_load_path,'rb') as file:
+        scalar = pickle.load(file)
+
+
+    Test2.iloc[:,:2] = scaler.transform(Test2.iloc[:,:2])
+
     return Test2
 
 def load_model(path_to_model:str):
