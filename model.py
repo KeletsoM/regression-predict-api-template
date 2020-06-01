@@ -156,7 +156,7 @@ def _preprocess_data(data):
         scalar = pickle.load(file)
 
 
-    Test2.iloc[:,:2] = scaler.transform(Test2.iloc[:,:2])
+    Test2.iloc[:,:2] = scalar.transform(Test2.iloc[:,:2])
 
     return Test2
 
